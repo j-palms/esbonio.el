@@ -1,4 +1,4 @@
-;;; esbonio.el --- Integrates the esbonio language server into Emacs -*- lexical-binding: t; -*-
+;;; esbonio.el --- Esbonio language server integration -*- lexical-binding: t -*-
 
 ;; Copyright (C) 2024 Alex Carney
 
@@ -78,8 +78,8 @@ documentation preview."
            (_ (esbonio-managed-buffer-p buffer))
            (line (line-number-at-pos pos)))
       (progn ;; (message "%s @ line %s" buffer line)
-             (if esbonio-scroll-view-function
-                 (funcall esbonio-scroll-view-function buffer line)))))
+        (if esbonio-scroll-view-function
+            (funcall esbonio-scroll-view-function buffer line)))))
 
 (defun esbonio-managed-buffer-p (buffer)
   "Returns t if BUFFER is managed by esbonio."
@@ -90,19 +90,37 @@ documentation preview."
 
 ;; Eglot integration
 
+;;;###autoload
+(defun esbonio-eglot-ensure ()
+  "Load esbonio.el's integrations with eglot, then call `eglot-ensure'"
+  ;; This function is mainly here to ensure that the below
+  ;; customisations are loaded *before* starting eglot
+  (require 'eglot)
+  (eglot-ensure))
+
 (with-eval-after-load 'eglot
+
+  (eval-and-compile  ; Trying to keep the byte-compiler happy...
+    (require 'eglot))
+
+  (defclass eglot-esbonio (eglot-lsp-server) ()
+    :documentation "Esbonio language server.")
+
+  (add-to-list 'eglot-server-programs
+               `(rst-mode . ,(append '(eglot-esbonio) esbonio-server-command)))
 
   (defun esbonio--eglot-preview-file (file-name)
     "`esbonio-preview-file-function' implementation for eglot."
     (let ((server (eglot-current-server))
-          (uri (eglot--path-to-uri file-name)))
+          (uri (eglot-path-to-uri file-name)))
       (if server
-          (eglot-execute-command server "esbonio.server.previewFile"
-                                 (vector `(:uri ,uri))))))
+          (eglot-execute server `(:command "esbonio.server.previewFile"
+                                           :arguments ,(vector `(:uri ,uri)))))))
   (setq esbonio-preview-file-function 'esbonio--eglot-preview-file)
 
   (defun esbonio--eglot-managed-buffer-p (buffer)
     "`esbonio-managed-buffer-predicate' implementation for eglot"
+    (defvar eglot-esbonio) ; Somehow needed to keep the byte-compiler happy...
     (with-current-buffer buffer
       (and (eglot-managed-p)
            (same-class-p (eglot-current-server) eglot-esbonio))))
@@ -112,22 +130,17 @@ documentation preview."
     "`esbonio-scroll-view-function' implementation for eglot"
     (if-let ((server (eglot-current-server))
              (file-name (with-current-buffer buffer buffer-file-name))
-             (uri (eglot--path-to-uri file-name)))
+             (uri (eglot-path-to-uri file-name)))
         (progn ;; (message "scroll %s @ %s" uri line)
-               (jsonrpc-notify server :view/scroll `(:uri ,uri :line ,line)))))
+          (jsonrpc-notify server :view/scroll `(:uri ,uri :line ,line)))))
   (setq esbonio-scroll-view-function 'esbonio--eglot-scroll-view)
 
-  (defclass eglot-esbonio (eglot-lsp-server) ()
-    :documentation "Esbonio language server.")
-
-
-  (add-to-list 'eglot-server-programs
-               `(rst-mode . ,(append '(eglot-esbonio) esbonio-server-command))))
+  (declare-function eglot-esbonio--eieio-childp nil) ; For the byte compiler
+  )
 
 
 
 ;; TODO: lsp-mode integration
-
 (with-eval-after-load 'lsp-mode)
 
 
