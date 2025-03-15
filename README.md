@@ -1,6 +1,10 @@
 # esbonio.el
 
-Emacs package for integrating the [esbonio](https://github.com/swyddfa/esbonio) language server into Emacs
+Emacs package for integrating the [esbonio](https://github.com/swyddfa/esbonio) language server into Emacs, providing the necessary glue code for both `eglot` and `lsp-mode`
+
+It also exposes the functionality provided by the language server that falls outside the LSP specification including live previews and syncronised scrolling
+
+Requires Emacs 30.1
 
 ## Setup (eglot)
 
@@ -10,27 +14,23 @@ Install the esbonio language server if you haven't already
 pipx install --pre esbonio
 ```
 
-Clone this repository to a location of your choosing
-
-```
-git clone https://github.com/swyddfa/esbonio.el
-```
-
-Add the following minimal configuration to your ``init.el``
+Add the following configuration to your ``init.el``
 
 ```elisp
-;; Ensure that eglot is loaded before esbonio
-(use-package eglot)
-
 (use-package esbonio
-  :load-path "path/to/esbonio.el"
-  :demand
-  :hook ((rst-mode . eglot-ensure)))
+  :vc (esbonio :url "https://github.com/swyddfa/esbonio.el")
+  :hook ((rst-mode . esbonio-eglot-ensure)))
 ```
 
 ## Setup (lsp-mode)
 
-Coming soon<sup>TM</sup>
+Install the esbonio language server if you haven't already
+
+```
+pipx install --pre esbonio
+```
+
+Details coming soon<sup>TM</sup>
 
 ## Usage
 
