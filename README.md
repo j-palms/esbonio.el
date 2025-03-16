@@ -18,7 +18,7 @@ Add the following configuration to your ``init.el``
 
 ```elisp
 (use-package esbonio
-  :vc (esbonio :url "https://github.com/swyddfa/esbonio.el")
+  :vc (esbonio :url "https://github.com/swyddfa/esbonio.el" :rev "main")
   :hook ((rst-mode . esbonio-eglot-ensure)))
 ```
 
@@ -34,7 +34,7 @@ Add the following configuration to your `init.el`
 
 ```elisp
 (use-package esbonio
-  :vc (esbonio :url "https://github.com/swyddfa/esbonio.el")
+  :vc (esbonio :url "https://github.com/swyddfa/esbonio.el" :rev "main")
   :hook ((rst-mode . esbonio-lsp-deferred)))  ;; or `esbonio-lsp'
 ```
 

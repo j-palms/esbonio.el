@@ -4,7 +4,7 @@
 
 ;; Author: Alex Carney <alcarneyme@gmail.com>
 ;; URL: https://github.com/swyddfa/esbonio.el
-;; Version: 0.1
+;; Version: 0.2
 ;; Package-Requires: ((emacs "30.1"))
 
 ;; This program is free software; you can redistribute it and/or modify
