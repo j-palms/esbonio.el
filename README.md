@@ -30,7 +30,13 @@ Install the esbonio language server if you haven't already
 pipx install --pre esbonio
 ```
 
-Details coming soon<sup>TM</sup>
+Add the following configuration to your `init.el`
+
+```elisp
+(use-package esbonio
+  :vc (esbonio :url "https://github.com/swyddfa/esbonio.el")
+  :hook ((rst-mode . esbonio-lsp-deferred)))  ;; or `esbonio-lsp'
+```
 
 ## Usage
 

@@ -1,6 +1,6 @@
 ;;; esbonio.el --- Esbonio language server integration -*- lexical-binding: t -*-
 
-;; Copyright (C) 2024 Alex Carney
+;; Copyright (C) 2024-2025 Alex Carney
 
 ;; Author: Alex Carney <alcarneyme@gmail.com>
 ;; URL: https://github.com/swyddfa/esbonio.el
@@ -38,7 +38,6 @@
   "Command to use when launching the esbonio server"
   :type '(repeat (string))
   :group 'esbonio)
-
 
 (defvar esbonio-managed-buffer-predicate nil
   "Predicate function for determining if the given buffer is managed by esbonio")
@@ -140,8 +139,71 @@ documentation preview."
 
 
 
-;; TODO: lsp-mode integration
-(with-eval-after-load 'lsp-mode)
+;; lsp-mode integration
+
+;;;###autoload
+(defun esbonio-lsp ()
+  "Load esbonio.el's integrations with lsp-mode, then call `lsp'"
+  ;; This function is mainly here to ensure that the below
+  ;; customisations are loaded *before* starting eglot
+  (require 'lsp-mode)
+  (lsp))
+
+;;;###autoload
+(defun esbonio-lsp-deferred ()
+  "Load esbonio.el's integrations with lsp-mode, then call `lsp-deferred'"
+  ;; This function is mainly here to ensure that the below
+  ;; customisations are loaded *before* starting eglot
+  (require 'lsp-mode)
+  (lsp-deferred))
+
+
+(with-eval-after-load 'lsp-mode
+
+  (eval-and-compile  ; Trying to keep the byte-compiler happy...
+    (require 'lsp-mode))
+
+  (lsp-register-client
+   (make-lsp-client
+    :new-connection (lsp-stdio-connection (lambda () esbonio-server-command))
+    :activation-fn (lsp-activate-on "restructuredtext")
+    :server-id 'esbonio))
+
+  (defun esbonio--lsp-mode-managed-buffer-p (buffer)
+    "`esbonio-managed-buffer-predicate' implementation for lsp-mode."
+    (with-current-buffer buffer
+      ;; This seems harder than it should be....
+      (if-let* ((root (project-root (project-current)))
+                (folder->servers (lsp-session-folder->servers (lsp-session)))
+                (workspaces (or (gethash root folder->servers nil)
+                                ;; `project-root' includes the final "/" while `folder->servers' does not
+                                (gethash (substring root 0 -1) folder->servers nil)))
+                ;; Assume a single server process for now...
+                (workspace (car workspaces))
+                (client (lsp--workspace-client workspace))
+                (server-id (lsp--client-server-id client)))
+          (eq server-id 'esbonio))))
+  (setq esbonio-managed-buffer-predicate 'esbonio--lsp-mode-managed-buffer-p)
+
+  (defun esbonio--lsp-mode-preview-file (file-name)
+    "`esbonio-preview-file-function' implementation for lsp-mode."
+    (let* ((uri (lsp--path-to-uri file-name))
+           (result (lsp-workspace-command-execute "esbonio.server.previewFile"
+                                                  (vector `(:uri ,uri)))))
+      ;; While lsp-mode implements 'window/showDocument', it doesn't support
+      ;; external uris (e.g. http://...). So it is up to us to open the
+      ;; uri returned from the server
+      (if (gethash "uri" result nil)
+          (browse-url (gethash "uri" result)))))
+  (setq esbonio-preview-file-function 'esbonio--lsp-mode-preview-file)
+
+  (defun esbonio--lsp-mode-scroll-view (buffer line)
+    "`esbonio-scroll-view-function' implementation for lsp-mode"
+    (if-let ((file-name (with-current-buffer buffer buffer-file-name))
+             (uri (lsp--path-to-uri file-name)))
+        (progn ;; (message "scroll %s @ %s" uri line)
+          (lsp-notify "view/scroll" `(:uri ,uri :line ,line)))))
+  (setq esbonio-scroll-view-function 'esbonio--lsp-mode-scroll-view))
 
 
 (provide 'esbonio)
